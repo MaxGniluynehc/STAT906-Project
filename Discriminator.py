@@ -38,7 +38,8 @@ class NeuralSort (torch.nn.Module):
         P_hat = P_hat.reshape(init_size)
 
         return P_hat
-    
+
+
 class Discriminator(nn.Module):
     """Discrimnator: 1 to 1 Causal temporal convolutional network with skip connections.
        This network uses 1D convolutions in order to model multiple timeseries co-dependency.
@@ -51,7 +52,6 @@ class Discriminator(nn.Module):
         self.dense2 = nn.Linear(pnl_size,2)  
         
         self.sigmoid = nn.Sigmoid()
-        
 
     def forward(self, x):
         x = torch.matmul(self.neural_sort(x),x)
