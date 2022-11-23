@@ -17,21 +17,43 @@ class TradingStrategy(object):
         self.look_back = look_back # takes int for strategy == ["buy-hold", "MA"]; takes tuple for strategy == ["MOM"]
         self.start, self.end = investment_horizon
         self.signal_upper, self.signal_lower = buy_signal_bounds
+        if tc.backends.mps.is_available(): # on MacOS
+            self.device = tc.device("mps")
+        elif tc.cuda.is_available(): # on WindowOS
+            self.device = tc.device("cuda")
+        else:
+            self.device= tc.device("cpu")
 
-    def get_portfolio_process(self, market_price_process, portfolio_weight):
+    def get_portfolio_process(self, market_price_process: tc.Tensor,
+                              portfolio_weight:tc.Tensor):
+        '''
+        :param market_price_process: [M, T]
+        :param portfolio_weight: [1, M] or [M, T], the way a portfolio is constructed.
+        :return: the portfolio value process (V_t) and return process (R_t), where
+        R_t = (S_t - S_{t-1})/S_{t-1}.
+        In our analysis, V_t is the price scenario and R_t is the PnL process.
+        For now, we assume that V_t and R_t are given, because portfolios are pre-constructed.
+        '''
 
         if portfolio_weight.shape() == market_price_process.shape(): # all [M, T]
-            Vt = np.multiply(portfolio_weight, market_price_process).sum(axis=0) # [1, T]
+            Vt = tc.multiply(portfolio_weight, market_price_process).sum(dim=0) # [1, T]
         elif portfolio_weight.shape()[0] == market_price_process.shape()[0]:
-            Vt = np.matmul(portfolio_weight.T, market_price_process) # [1,T]
+            Vt = tc.matmul(portfolio_weight.T, market_price_process) # [1,T]
         else:
             ValueError("market_price_process and portfolio_weight has mismatched dimension!")
 
         Rt = (Vt[1:-1] - Vt[0:-2])/Vt[0:-2] # [1, T-1]
         return Vt, Rt
 
-    def get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=True):
-
+    def _get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=True):
+        '''
+        (This is used if PnL process is not given, for now this is deprecated, please use
+        the new function get_strategy_PnL() below. )
+        :param market_price_process: [M, T]
+        :param portfolio_weight: [1, M] or [M, T]
+        :param return_signal: if true, also return the trade signals, default is true.
+        :return: the PnL process if we trade following the self.strategy strategy.
+        '''
         if self.strategy == "buy-hold":
             Vt, Rt = self.get_portfolio_process(market_price_process, portfolio_weight)
             PnL = Rt[self.start : self.end]
@@ -72,6 +94,48 @@ class TradingStrategy(object):
             else:
                 return PnL
 
+    def get_strategy_PnL(self, Rt, return_signal=True):
+        '''
+        :param Rt: The given return process of the pre-constructed portfolio
+        :param return_signal: if true, also return the trade signals, default is true.
+        :return: the PnL process if we trade following the self.strategy strategy, over the
+        trading horizon from self.strat to self.end.
+        '''
+
+        if self.strategy == "buy-hold":
+            PnL = tc.as_tensor(Rt[self.start : self.end], dtype=tc.float32, device=self.device)
+            return PnL
+
+        elif self.strategy == "MA":
+            Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
+
+            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long()
+            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long()
+            signal = (tc.linspace(0,0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+            if return_signal:
+                return PnL, signal  # [1, T]
+            else:
+                return PnL  # [1, T]
+
+        elif self.strategy == "MOM":
+            if len(self.look_back) == 1:
+                Rt_ma_long = utils.moving_average(Rt, window_size=self.look_back)  # [1, T]
+                Rt_ma_short = Rt  # [1, T]
+
+            else:
+                Rt_ma_long = utils.moving_average(Rt, window_size=max(self.look_back))  # [1, T]
+                Rt_ma_short = utils.moving_average(Rt, window_size=min(self.look_back))  # [1, T]
+
+            sell_signal = -((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) > self.signal_upper).long()
+            buy_signal = ((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) < -self.signal_lower).long()
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+
+            if return_signal:
+                return PnL, signal  # [1, T]
+            else:
+                return PnL  # [1, T]
 
 
 
