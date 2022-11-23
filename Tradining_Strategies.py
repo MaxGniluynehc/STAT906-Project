@@ -17,6 +17,7 @@ class TradingStrategy(object):
         self.look_back = look_back # takes int for strategy == ["buy-hold", "MA"]; takes tuple for strategy == ["MOM"]
         self.start, self.end = investment_horizon
         self.signal_upper, self.signal_lower = buy_signal_bounds
+
         if tc.backends.mps.is_available(): # on MacOS
             self.device = tc.device("mps")
         elif tc.cuda.is_available(): # on WindowOS
