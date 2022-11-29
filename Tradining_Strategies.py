@@ -2,7 +2,7 @@ import torch as tc
 import numpy as np
 import utils
 
-tc.device("mps")
+tc.device("cuda")
 
 # 3 strategies: buy-hold, MA, MOM
 
@@ -18,12 +18,14 @@ class TradingStrategy(object):
         self.start, self.end = investment_horizon
         self.signal_upper, self.signal_lower = buy_signal_bounds
 
-        if tc.backends.mps.is_available(): # on MacOS
-            self.device = tc.device("mps")
-        elif tc.cuda.is_available(): # on WindowOS
-            self.device = tc.device("cuda")
-        else:
-            self.device= tc.device("cpu")
+        # if tc.backends.mps.is_available(): # on MacOS
+        #     self.device = tc.device("mps")
+        # elif tc.cuda.is_available(): # on WindowOS
+        #     self.device = tc.device("cuda")
+        # else:
+        #     self.device= tc.device("cpu")
+
+        self.device = tc.device("cuda")
 
     def get_portfolio_process(self, market_price_process: tc.Tensor,
                               portfolio_weight:tc.Tensor):
@@ -36,12 +38,13 @@ class TradingStrategy(object):
         For now, we assume that V_t and R_t are given, because portfolios are pre-constructed.
         '''
 
-        if portfolio_weight.shape() == market_price_process.shape(): # all [M, T]
+        if portfolio_weight.shape == market_price_process.shape: # all [M, T]
             Vt = tc.multiply(portfolio_weight, market_price_process).sum(dim=0) # [1, T]
-        elif portfolio_weight.shape()[0] == market_price_process.shape()[0]:
+        elif portfolio_weight.shape[0] == market_price_process.shape[0]:
             Vt = tc.matmul(portfolio_weight.T, market_price_process) # [1,T]
         else:
             ValueError("market_price_process and portfolio_weight has mismatched dimension!")
+
 
         Rt = (Vt[1:-1] - Vt[0:-2])/Vt[0:-2] # [1, T-1]
         return Vt, Rt

@@ -20,7 +20,6 @@ class NeuralSort (torch.nn.Module):
 
         init_size = scores.size()
         bsize = scores.size()[0]
-        scores = scores.reshape(bsize,-1,1)
         scores = scores.unsqueeze(-1)
         dim = scores.size()[1]
         one = torch.FloatTensor(dim, 1).fill_(1).to(self.device)
@@ -34,8 +33,6 @@ class NeuralSort (torch.nn.Module):
         P_max = (C-B).permute(0, 2, 1)
         sm = torch.nn.Softmax(-1)
         P_hat = sm(P_max / self.tau)
-        
-        P_hat = P_hat.reshape(init_size)
 
         return P_hat
 
@@ -51,11 +48,12 @@ class Discriminator(nn.Module):
         self.dense1 = nn.Linear(pnl_size, pnl_size)
         self.dense2 = nn.Linear(pnl_size,2)  
         
+        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        x = torch.matmul(self.neural_sort(x),x)
-        x = self.dense2(self.dense1(x))
+        x = torch.matmul(self.neural_sort(x),x.unsqueeze(-1))
+        x = self.dense2(self.relu(self.dense1(x)))
         x = self.sigmoid(x)
                     
         return x

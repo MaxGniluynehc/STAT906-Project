@@ -4,13 +4,10 @@ import numpy as np
 
 
 class Generator(nn.Module):
-    def __init__(self, noise_size, pnl_size, market_size, noise_type="gaussian", device="mps"):
+    def __init__(self, noise_size, pnl_size, market_size, noise_type="gaussian", device="cuda"):
         super(Generator, self).__init__()
-        if tc.backends.mps.is_available():
-            self.device = tc.device(device)
-        else:
-            Warning("GPU unavailable.")
-            self.device = tc.device("cpu")
+
+        self.device = device
 
         self.noise_size = noise_size
         self.pnl_size = pnl_size # this is T
