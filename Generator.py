@@ -8,6 +8,7 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         self.device = device
+        noise_size = 1
 
         self.noise_size = noise_size
         self.pnl_size = pnl_size # this is T
@@ -32,14 +33,15 @@ class Generator(nn.Module):
         else:
             ValueError("Wrong error type!")
 
-    def forward(self, hidden_layer_num =3, **kwargs):
+    def forward(self, hidden_layer_num =1, **kwargs):
         nz = self.generate_noise_input(type=self.noise_type, **kwargs)
         x = self.dense1(nz)
-        x = self.relu(x)
+        x = self.leakyrelu(x)
         for i in range(hidden_layer_num):
             x = self.dense2(x)
-            x = self.relu(x)
+            x = self.leakyrelu(x)
         x = self.dense3(x)
+        # x = self.tanh(x)
         return x
         # nn.ModuleList([self.dense2, nn.ReLU()]*hidden_layer_num)
 

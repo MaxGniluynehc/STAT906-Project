@@ -107,7 +107,7 @@ class TradingStrategy(object):
         '''
 
         if self.strategy == "buy-hold":
-            PnL = tc.as_tensor(Rt[self.start : self.end], dtype=tc.float32, device=self.device)
+            PnL = tc.as_tensor(Rt, dtype=tc.float32, device=self.device)
             return PnL
 
         elif self.strategy == "MA":

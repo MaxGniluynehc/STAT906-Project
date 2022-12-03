@@ -25,16 +25,20 @@ def ES(alpha, x):
 
 
 def score(v,e,x,alpha):
+    # print(v,e)
     # Setting W needs some discussion
-    W = tc.max(tc.column_stack([ES(alpha,x)/VaR(alpha,x), tc.ones(size=ES(alpha,x).shape)]), dim=-1).values
+    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values
     # can also use W = np.random.uniform(1, ES(alpha,x)/VaR(alpha,x), num=1)
-    v_ = v.repeat(x.shape[-1], 1).T
-    e_ = e.repeat(x.shape[-1], 1).T
-    W_ = W.repeat(x.shape[-1], 1).T
+    v_ = v.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    e_ = e.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    W_ = W.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    x = x.unsqueeze(-1)
 
-    s_ = W_ * ((x <= v_).long() - alpha) * (x ** 2 - v_ ** 2) / 2 + (x <= v_).long() * e_ * (v_ - x) + alpha * e_ * (
-                e_ / 2 - v_)
+    # print(x.shape,v_.shape,e_.shape,W_.shape)
 
+    s_ = W_ * ((x <= v_).long() - alpha) * (x ** 2 - v_ ** 2) / 2 + (x <= v_).long() * e_ * (v_ - x) + alpha * e_ * (e_ / 2 - v_)
+    # print(tc.sum(s_))
+    # print(s_.shape)
     return s_ # W*((x <= v).long() - alpha) * (x**2 - v**2)/2 + (x <= v).long() * e * (v-x) + alpha*e*(e/2 - v)
 
 

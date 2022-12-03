@@ -46,15 +46,20 @@ class Discriminator(nn.Module):
                     
         self.neural_sort = NeuralSort(tau=1.0, device=device)
         self.dense1 = nn.Linear(pnl_size, pnl_size)
-        self.dense2 = nn.Linear(pnl_size,2)  
+        self.dense2 = nn.Linear(pnl_size, pnl_size)
+        self.dense3 = nn.Linear(pnl_size,2)
         
         self.relu = nn.ReLU()
+        self.leakyrelu = nn.LeakyReLU()
         self.sigmoid = nn.Sigmoid()
+        self.tanh = nn.Tanh()
 
     def forward(self, x):
-        x = torch.matmul(self.neural_sort(x),x.unsqueeze(-1))
-        x = self.dense2(self.relu(self.dense1(x)))
-        x = self.sigmoid(x)
+        x = torch.matmul(self.neural_sort(x),x.unsqueeze(-1)).squeeze(-1)
+        x = self.dense2(self.leakyrelu(self.dense1(x)))
+        x = self.dense3(self.leakyrelu(x))
+        # x = self.sigmoid(x)
+        # x = self.tanh(x)
                     
         return x
 
