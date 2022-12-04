@@ -98,15 +98,20 @@ class TradingStrategy(object):
             else:
                 return PnL
 
-    def get_strategy_PnL(self, prices, return_signal=False):
+    def get_strategy_PnL(self, Rt, return_signal=False):
         '''
         :param Rt: The given return process of the pre-constructed portfolio
         :param return_signal: if true, also return the trade signals, default is true.
         :return: the PnL process if we trade following the self.strategy strategy, over the
         trading horizon from self.strat to self.end.
         '''
-
-        Rt = prices[:,:]/prices[:,0].reshape(-1,1)
+        # print("--------------------------------")
+        # print(prices)
+        # Rt = tc.log(prices[:,:]/prices[:,0].reshape(-1,1))
+        # print(prices)
+        # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        # # if tc.isnan(Rt).any():
+        #     # print(prices,Rt)
 
         if self.strategy == "buy-hold":
             PnL = tc.as_tensor(Rt, dtype=tc.float32, device=self.device)
