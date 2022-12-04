@@ -49,7 +49,7 @@ class TradingStrategy(object):
         Rt = (Vt[1:-1] - Vt[0:-2])/Vt[0:-2] # [1, T-1]
         return Vt, Rt
 
-    def _get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=True):
+    def _get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=False):
         '''
         (This is used if PnL process is not given, for now this is deprecated, please use
         the new function get_strategy_PnL() below. )
@@ -98,13 +98,15 @@ class TradingStrategy(object):
             else:
                 return PnL
 
-    def get_strategy_PnL(self, Rt, return_signal=True):
+    def get_strategy_PnL(self, prices, return_signal=False):
         '''
         :param Rt: The given return process of the pre-constructed portfolio
         :param return_signal: if true, also return the trade signals, default is true.
         :return: the PnL process if we trade following the self.strategy strategy, over the
         trading horizon from self.strat to self.end.
         '''
+
+        Rt = prices[:,:]/prices[:,0].reshape(-1,1)
 
         if self.strategy == "buy-hold":
             PnL = tc.as_tensor(Rt, dtype=tc.float32, device=self.device)
@@ -113,17 +115,17 @@ class TradingStrategy(object):
         elif self.strategy == "MA":
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long()
-            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long()
-            signal = (tc.linspace(0,0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
-            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long()
+            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long()
+            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
             if return_signal:
                 return PnL, signal  # [1, T]
             else:
                 return PnL  # [1, T]
 
         elif self.strategy == "MOM":
-            if len(self.look_back) == 1:
+            if type(self.look_back) == int:
                 Rt_ma_long = utils.moving_average(Rt, window_size=self.look_back)  # [1, T]
                 Rt_ma_short = Rt  # [1, T]
 
@@ -131,10 +133,10 @@ class TradingStrategy(object):
                 Rt_ma_long = utils.moving_average(Rt, window_size=max(self.look_back))  # [1, T]
                 Rt_ma_short = utils.moving_average(Rt, window_size=min(self.look_back))  # [1, T]
 
-            sell_signal = -((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) > self.signal_upper).long()
-            buy_signal = ((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) < -self.signal_lower).long()
-            signal = (tc.linspace(0, 0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
-            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long()
+            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long()
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
 
             if return_signal:
                 return PnL, signal  # [1, T]

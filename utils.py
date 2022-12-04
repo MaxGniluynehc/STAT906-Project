@@ -1,15 +1,28 @@
 
 import numpy as np
 import torch as tc
+import torch
 
 
 
-def moving_average(array, window_size):
-    s = tc.cumsum(array, dim=0)
-    s[window_size:] = s[window_size:] - s[:-window_size]
-    s[window_size-1:] = s[window_size-1:]/window_size
-    s[:(window_size - 1)] = s[:(window_size - 1)] / tc.arange(1, window_size)
-    return s
+# def moving_average(array, window_size):
+#     s = tc.cumsum(array, dim=1)
+#     # print(s.shape,s)
+#     s[:,window_size:] = s[:,window_size:] - s[:,-window_size].reshape(-1,1)
+#     s[:,window_size-1:] = s[:,window_size-1:]/window_size
+#     s[:,(window_size - 1)] = s[:,(window_size - 1)] / tc.arange(1, window_size)
+#     return s
+
+def moving_average(x, window_size):
+    N=window_size
+    zeros = torch.zeros(x.size()[0]).unsqueeze(1).cuda()
+    ma = torch.cat((zeros,x),dim=1)
+    ma = torch.cumsum(ma,dim=1)
+#     print(ma)
+#     print(ma[:,N:] - ma[:,:-N])
+    ma = (ma[:,N:] - ma[:,:-N]) / float(N)
+    ma = torch.cat((x[:,:N-1],ma),dim=1)
+    return ma
 
 
 def VaR(alpha, x):
