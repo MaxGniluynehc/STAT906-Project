@@ -2,7 +2,7 @@ import torch as tc
 import numpy as np
 import utils
 
-tc.device("mps")
+tc.device("cuda")
 
 # 3 strategies: buy-hold, MA, MOM
 
@@ -18,12 +18,14 @@ class TradingStrategy(object):
         self.start, self.end = investment_horizon
         self.signal_upper, self.signal_lower = buy_signal_bounds
 
-        if tc.backends.mps.is_available(): # on MacOS
-            self.device = tc.device("mps")
-        elif tc.cuda.is_available(): # on WindowOS
-            self.device = tc.device("cuda")
-        else:
-            self.device= tc.device("cpu")
+        # if tc.backends.mps.is_available(): # on MacOS
+        #     self.device = tc.device("mps")
+        # elif tc.cuda.is_available(): # on WindowOS
+        #     self.device = tc.device("cuda")
+        # else:
+        #     self.device= tc.device("cpu")
+
+        self.device = tc.device("cuda")
 
     def get_portfolio_process(self, market_price_process: tc.Tensor,
                               portfolio_weight:tc.Tensor):
@@ -36,17 +38,18 @@ class TradingStrategy(object):
         For now, we assume that V_t and R_t are given, because portfolios are pre-constructed.
         '''
 
-        if portfolio_weight.shape() == market_price_process.shape(): # all [M, T]
+        if portfolio_weight.shape == market_price_process.shape: # all [M, T]
             Vt = tc.multiply(portfolio_weight, market_price_process).sum(dim=0) # [1, T]
-        elif portfolio_weight.shape()[0] == market_price_process.shape()[0]:
+        elif portfolio_weight.shape[0] == market_price_process.shape[0]:
             Vt = tc.matmul(portfolio_weight.T, market_price_process) # [1,T]
         else:
             ValueError("market_price_process and portfolio_weight has mismatched dimension!")
 
+
         Rt = (Vt[1:-1] - Vt[0:-2])/Vt[0:-2] # [1, T-1]
         return Vt, Rt
 
-    def _get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=True):
+    def _get_strategy_PnL(self, market_price_process, portfolio_weight, return_signal=False):
         '''
         (This is used if PnL process is not given, for now this is deprecated, please use
         the new function get_strategy_PnL() below. )
@@ -95,32 +98,39 @@ class TradingStrategy(object):
             else:
                 return PnL
 
-    def get_strategy_PnL(self, Rt, return_signal=True):
+    def get_strategy_PnL(self, Rt, return_signal=False):
         '''
         :param Rt: The given return process of the pre-constructed portfolio
         :param return_signal: if true, also return the trade signals, default is true.
         :return: the PnL process if we trade following the self.strategy strategy, over the
         trading horizon from self.strat to self.end.
         '''
+        # print("--------------------------------")
+        # print(prices)
+        # Rt = tc.log(prices[:,:]/prices[:,0].reshape(-1,1))
+        # print(prices)
+        # print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        # # if tc.isnan(Rt).any():
+        #     # print(prices,Rt)
 
         if self.strategy == "buy-hold":
-            PnL = tc.as_tensor(Rt[self.start : self.end], dtype=tc.float32, device=self.device)
+            PnL = tc.as_tensor(Rt, dtype=tc.float32, device=self.device)
             return PnL
 
         elif self.strategy == "MA":
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long()
-            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long()
-            signal = (tc.linspace(0,0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
-            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long()
+            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long()
+            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
             if return_signal:
                 return PnL, signal  # [1, T]
             else:
                 return PnL  # [1, T]
 
         elif self.strategy == "MOM":
-            if len(self.look_back) == 1:
+            if type(self.look_back) == int:
                 Rt_ma_long = utils.moving_average(Rt, window_size=self.look_back)  # [1, T]
                 Rt_ma_short = Rt  # [1, T]
 
@@ -128,10 +138,10 @@ class TradingStrategy(object):
                 Rt_ma_long = utils.moving_average(Rt, window_size=max(self.look_back))  # [1, T]
                 Rt_ma_short = utils.moving_average(Rt, window_size=min(self.look_back))  # [1, T]
 
-            sell_signal = -((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) > self.signal_upper).long()
-            buy_signal = ((Rt_ma_long[self.start : self.end] - Rt_ma_short[self.start : self.end]) < -self.signal_lower).long()
-            signal = (tc.linspace(0, 0, steps=buy_signal.shape[0]) + buy_signal + sell_signal).to(dtype=tc.int)
-            PnL = tc.multiply(Rt[self.start : self.end], signal).to(dtype=tc.float32, device=self.device)
+            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long()
+            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long()
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
 
             if return_signal:
                 return PnL, signal  # [1, T]

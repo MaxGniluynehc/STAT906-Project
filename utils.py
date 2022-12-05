@@ -1,15 +1,28 @@
 
 import numpy as np
 import torch as tc
+import torch
 
 
 
-def moving_average(array, window_size):
-    s = tc.cumsum(array, dim=0)
-    s[window_size:] = s[window_size:] - s[:-window_size]
-    s[window_size-1:] = s[window_size-1:]/window_size
-    s[:(window_size - 1)] = s[:(window_size - 1)] / tc.arange(1, window_size)
-    return s
+# def moving_average(array, window_size):
+#     s = tc.cumsum(array, dim=1)
+#     # print(s.shape,s)
+#     s[:,window_size:] = s[:,window_size:] - s[:,-window_size].reshape(-1,1)
+#     s[:,window_size-1:] = s[:,window_size-1:]/window_size
+#     s[:,(window_size - 1)] = s[:,(window_size - 1)] / tc.arange(1, window_size)
+#     return s
+
+def moving_average(x, window_size):
+    N=window_size
+    zeros = torch.zeros(x.size()[0]).unsqueeze(1).cuda()
+    ma = torch.cat((zeros,x),dim=1)
+    ma = torch.cumsum(ma,dim=1)
+#     print(ma)
+#     print(ma[:,N:] - ma[:,:-N])
+    ma = (ma[:,N:] - ma[:,:-N]) / float(N)
+    ma = torch.cat((x[:,:N-1],ma),dim=1)
+    return ma
 
 
 def VaR(alpha, x):
@@ -25,16 +38,20 @@ def ES(alpha, x):
 
 
 def score(v,e,x,alpha):
+    # print(v,e)
     # Setting W needs some discussion
-    W = tc.max(tc.column_stack([ES(alpha,x)/VaR(alpha,x), tc.ones(size=ES(alpha,x).shape)]), dim=-1).values
+    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values
     # can also use W = np.random.uniform(1, ES(alpha,x)/VaR(alpha,x), num=1)
-    v_ = v.repeat(x.shape[-1], 1).T
-    e_ = e.repeat(x.shape[-1], 1).T
-    W_ = W.repeat(x.shape[-1], 1).T
+    v_ = v.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    e_ = e.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    W_ = W.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    x = x.unsqueeze(-1)
 
-    s_ = W_ * ((x <= v_).long() - alpha) * (x ** 2 - v_ ** 2) / 2 + (x <= v_).long() * e_ * (v_ - x) + alpha * e_ * (
-                e_ / 2 - v_)
+    # print(x.shape,v_.shape,e_.shape,W_.shape)
 
+    s_ = W_ * ((x <= v_).long() - alpha) * (x ** 2 - v_ ** 2) / 2 + (x <= v_).long() * e_ * (v_ - x) + alpha * e_ * (e_ / 2 - v_)
+    # print(tc.sum(s_))
+    # print(s_.shape)
     return s_ # W*((x <= v).long() - alpha) * (x**2 - v**2)/2 + (x <= v).long() * e * (v-x) + alpha*e*(e/2 - v)
 
 
