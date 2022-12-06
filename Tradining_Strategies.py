@@ -66,8 +66,8 @@ class TradingStrategy(object):
             Vt, Rt = self.get_portfolio_process(market_price_process, portfolio_weight)
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long().to(dtype=tc.int8) # astype(int)
-            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long().to(dtype=tc.int8)# astype(int)
+            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long().to(dtype=tc.float32) # astype(int)
+            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long().to(dtype=tc.float32)# astype(int)
             signal = np.linspace(0,0,num=len(buy_signal)) + buy_signal + sell_signal
             PnL = np.multiply(Rt[self.start : self.end], signal)
             if return_signal:
@@ -118,9 +118,9 @@ class TradingStrategy(object):
         elif self.strategy == "MA":
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long().to(dtype=tc.int8)
-            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long().to(dtype=tc.int8)
-            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.int8)
+            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long().to(dtype=tc.float32)
+            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long().to(dtype=tc.float32)
+            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.float32)
             PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
             if return_signal:
                 return PnL, signal  # [1, T]
@@ -136,9 +136,9 @@ class TradingStrategy(object):
                 Rt_ma_long = utils.moving_average(Rt, window_size=max(self.look_back))  # [1, T]
                 Rt_ma_short = utils.moving_average(Rt, window_size=min(self.look_back))  # [1, T]
 
-            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long().to(dtype=tc.int8)
-            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long().to(dtype=tc.int8)
-            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.int)
+            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long().to(dtype=tc.float32)
+            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long().to(dtype=tc.float32)
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.float32)
             PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
 
             if return_signal:
