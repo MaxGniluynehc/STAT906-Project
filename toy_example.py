@@ -76,8 +76,15 @@ plt.figure()
 for i in torch.randint(0, toy_sample_n, [100]):
     plt.plot(list(range(101)), toy_sample[i,:].to("cpu"), color="gray", alpha=0.1)
 
+toy_sample_log = torch.log(toy_sample) # log paths log(pt/p0)
+plt.figure()
+for i in torch.randint(0, toy_sample_n, [100]):
+    plt.plot(list(range(101)), toy_sample_log[i,:].to("cpu"), color="gray", alpha=0.1)
+
+
+
 # define dataloader
-dataloader = torch.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
+dataloader = torch.utils.data.DataLoader(toy_sample_log, batch_size=batch_size, drop_last=True, shuffle=True)
 
 # define GAN model
 generator = Generator(noise_size=noise_size, pnl_size=pnl_size, market_size=batch_size, device=dev) #.to(device)
