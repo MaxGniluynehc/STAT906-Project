@@ -16,17 +16,16 @@ class NeuralSort (torch.nn.Module):
         self.device = device
         self.tau = tau
 
-    def forward(self, scores: Tensor):
+    def forward(self, scores: Tensor): # score: [batch_size, 1, batch_time_size]
 
         init_size = scores.size()
         bsize = scores.size()[0]
-        scores = scores.unsqueeze(-1)
-        dim = scores.size()[1]
+        scores = scores.unsqueeze(-1) # score: [batch_size, batch_time_size]
+        dim = scores.size()[1] # dim is the batch_time_size, or n in Eq(28)
         one = torch.FloatTensor(dim, 1).fill_(1).to(self.device)
 
         A_scores = torch.abs(scores - scores.permute(0, 2, 1))
-        B = torch.matmul(A_scores, torch.matmul(
-            one, torch.transpose(one, 0, 1)))
+        B = torch.matmul(A_scores, torch.matmul(one, torch.transpose(one, 0, 1)))
         scaling = (dim + 1 - 2 * (torch.arange(dim) + 1)).type(torch.FloatTensor).to(self.device)
         C = torch.matmul(scores, scaling.unsqueeze(0))
 
@@ -37,17 +36,18 @@ class NeuralSort (torch.nn.Module):
         return P_hat
 
 
+
 class Discriminator(nn.Module):
     """Discrimnator: 1 to 1 Causal temporal convolutional network with skip connections.
        This network uses 1D convolutions in order to model multiple timeseries co-dependency.
     """ 
-    def __init__(self, pnl_size, device="cuda"):
+    def __init__(self, pnl_size, device):
         super(Discriminator, self).__init__()
                     
         self.neural_sort = NeuralSort(tau=1.0, device=device)
-        self.dense1 = nn.Linear(pnl_size, pnl_size)
-        self.dense2 = nn.Linear(pnl_size, pnl_size)
-        self.dense3 = nn.Linear(pnl_size,2)
+        self.dense1 = nn.Linear(pnl_size, pnl_size, device=device)
+        self.dense2 = nn.Linear(pnl_size, pnl_size, device=device)
+        self.dense3 = nn.Linear(pnl_size,2, device=device)
         
         self.relu = nn.ReLU()
         self.leakyrelu = nn.LeakyReLU()

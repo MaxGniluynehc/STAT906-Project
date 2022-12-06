@@ -2,8 +2,6 @@ import torch as tc
 import numpy as np
 import utils
 
-tc.device("cuda")
-
 # 3 strategies: buy-hold, MA, MOM
 
 # Price process: [M, T], M is market dim, T is total time steps
@@ -11,7 +9,8 @@ tc.device("cuda")
 
 
 class TradingStrategy(object):
-    def __init__(self, strategy: str, look_back: int or tuple, investment_horizon:tuple, buy_signal_bounds:tuple):
+    def __init__(self, strategy: str, look_back: int or tuple, investment_horizon:tuple,
+                 buy_signal_bounds:tuple, device=None):
         assert strategy in ["buy-hold", "MA", "MOM"], ValueError("Invalid strategy!")
         self.strategy = strategy
         self.look_back = look_back # takes int for strategy == ["buy-hold", "MA"]; takes tuple for strategy == ["MOM"]
@@ -25,7 +24,7 @@ class TradingStrategy(object):
         # else:
         #     self.device= tc.device("cpu")
 
-        self.device = tc.device("cuda")
+        self.device = tc.device(device) if device is not None else tc.device("cpu")
 
     def get_portfolio_process(self, market_price_process: tc.Tensor,
                               portfolio_weight:tc.Tensor):
@@ -61,15 +60,14 @@ class TradingStrategy(object):
         if self.strategy == "buy-hold":
             Vt, Rt = self.get_portfolio_process(market_price_process, portfolio_weight)
             PnL = Rt[self.start : self.end]
-
             return PnL
 
         elif self.strategy == "MA":
             Vt, Rt = self.get_portfolio_process(market_price_process, portfolio_weight)
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).astype(int)
-            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).astype(int)
+            sell_signal = -((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) > self.signal_upper).long().to(dtype=tc.int8) # astype(int)
+            buy_signal = ((Rt[self.start : self.end] - Rt_ma[self.start : self.end]) < - self.signal_lower).long().to(dtype=tc.int8)# astype(int)
             signal = np.linspace(0,0,num=len(buy_signal)) + buy_signal + sell_signal
             PnL = np.multiply(Rt[self.start : self.end], signal)
             if return_signal:
@@ -120,9 +118,9 @@ class TradingStrategy(object):
         elif self.strategy == "MA":
             Rt_ma = utils.moving_average(Rt, window_size=self.look_back) # [1, T]
 
-            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long()
-            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long()
-            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            sell_signal = -((Rt - Rt_ma) > self.signal_upper).long().to(dtype=tc.int8)
+            buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long().to(dtype=tc.int8)
+            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.int8)
             PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
             if return_signal:
                 return PnL, signal  # [1, T]
@@ -138,9 +136,9 @@ class TradingStrategy(object):
                 Rt_ma_long = utils.moving_average(Rt, window_size=max(self.look_back))  # [1, T]
                 Rt_ma_short = utils.moving_average(Rt, window_size=min(self.look_back))  # [1, T]
 
-            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long()
-            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long()
-            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).cuda() + buy_signal + sell_signal).to(dtype=tc.int)
+            sell_signal = -((Rt_ma_long - Rt_ma_short) > self.signal_upper).long().to(dtype=tc.int8)
+            buy_signal = ((Rt_ma_long - Rt_ma_short) < -self.signal_lower).long().to(dtype=tc.int8)
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.int)
             PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
 
             if return_signal:
