@@ -40,11 +40,12 @@ def ES(alpha, x):
 def score(v,e,x,alpha):
     # print(v,e)
     # Setting W needs some discussion
-    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values
+    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values #5*tc.ones(size=(x.shape[0],)).cuda().unsqueeze(-1)
     # can also use W = np.random.uniform(1, ES(alpha,x)/VaR(alpha,x), num=1)
     v_ = v.repeat(x.shape[-1], 1).T.unsqueeze(-1)
     e_ = e.repeat(x.shape[-1], 1).T.unsqueeze(-1)
     W_ = W.repeat(x.shape[-1], 1).T.unsqueeze(-1)
+    # W_ = W_.reshape(x.shape).unsqueeze(-1)
     x = x.unsqueeze(-1)
 
     # print(x.shape,v_.shape,e_.shape,W_.shape)
