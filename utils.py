@@ -74,7 +74,9 @@ def score(v,e,x,alpha=0.05):
 
     # print(x.shape,v_.shape,e_.shape,W_.shape)
 
-    s_ = W_ * ((x <= v_).long().to(dtype=tc.float32) - alpha) * (x ** 2 - v_ ** 2) / 2 + (x <= v_).long().to(dtype=tc.float32) * e_ * (v_ - x) + alpha * e_ * (e_ / 2 - v_)
+    s_ = W_ * ((x <= v_).long().to(dtype=tc.float32) - alpha) * (x ** 2 - v_ ** 2) / 2 \
+         + (x <= v_).long().to(dtype=tc.float32) * e_ * (v_ - x) \
+         + alpha * e_ * (e_ / 2 - v_)
     # print(tc.sum(s_))
     # print(s_.shape)
     return s_ # W*((x <= v).long() - alpha) * (x**2 - v**2)/2 + (x <= v).long() * e * (v-x) + alpha*e*(e/2 - v)
