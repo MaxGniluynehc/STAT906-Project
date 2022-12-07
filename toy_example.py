@@ -29,7 +29,8 @@ noise_size=100
 pnl_size=101
 market_size=5
 # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
-logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+# logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
 # logs_PATH = "/Users/maxchen/Documents/Study/STA/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
 
 
@@ -93,7 +94,7 @@ trade_strategy_3 = TradingStrategy("MOM", look_back, (0, 0), (signal, signal), d
 
 
 # Train
-def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH):
+def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH, reinforce=False, vol_reduction=False):
     generator.train()
     discriminator.train()
 
@@ -115,7 +116,9 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH):
                 ps_fake = generator.forward(mean=0, std=1).reshape(batch_size, -1).detach()
                 assert not tc.any(tc.isnan(ps_fake)), AssertionError("training_disc: ps_fake returns nan!")
 
-                disc_loss = discriminator.loss(lbd, ps_real, ps_fake, [trade_strategy_1, trade_strategy_2, trade_strategy_3], reinforce=True)
+                disc_loss = discriminator.loss(lbd, ps_real, ps_fake,
+                                               [trade_strategy_1, trade_strategy_2, trade_strategy_3],
+                                               reinforce=reinforce)
 
                 # disc_loss = 0
                 # for trade_strategy in [trade_strategy_1, trade_strategy_2, trade_strategy_3]:
@@ -157,7 +160,9 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH):
                 ps_fake = generator(mean=0, std=1).reshape(batch_size, -1)
                 assert not tc.any(tc.isnan(ps_fake)), AssertionError("training_gen: ps_fake returns nan!")
 
-                gen_loss = generator.loss(ps_real, ps_fake, [trade_strategy_1, trade_strategy_2, trade_strategy_3], discriminator, reinforce=True)
+                gen_loss = generator.loss(ps_real, ps_fake,
+                                          [trade_strategy_1, trade_strategy_2, trade_strategy_3],
+                                          discriminator, reinforce=reinforce, vol_reduction=vol_reduction)
 
                 # gen_loss = 0
                 # for trade_strategy in [trade_strategy_1, trade_strategy_2, trade_strategy_3]:
@@ -217,7 +222,9 @@ if __name__ == '__main__':
     pnl_size = 101
     market_size = 5
     # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
-    logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+    logs_PATH_old = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+    logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
+
 
     dataloader = tc.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
     # define GAN model
@@ -232,8 +239,8 @@ if __name__ == '__main__':
 
 
     # Load trained generator
-    generator = tc.load(logs_PATH+"trained_generator_at_epoch_{}.pth".format(89))
-    discriminator = tc.load(logs_PATH+"trained_discriminator_at_epoch_{}.pth".format(89))
+    generator = tc.load(logs_PATH_old+"trained_generator_at_epoch_{}.pth".format(139))
+    discriminator = tc.load(logs_PATH_old+"trained_discriminator_at_epoch_{}.pth".format(139))
 
     # generator.eval()
     # pnl = generator.forward(mean=0, std=1)
@@ -242,7 +249,7 @@ if __name__ == '__main__':
     #     plt.plot(list(range(pnl.shape[1])), pnl[i, :].detach().cpu(), color="gray", alpha=0.1)
     # plt.ylim([-0.1, 0.1])
 
-    gen_loss_logs, disc_loss_logs = train(epochs=tqdm(range(90,150)))
+    gen_loss_logs, disc_loss_logs = train(epochs=tqdm(range(150,200)), reinforce=True, vol_reduction=True)
     print("gen_loss_logs: {} \n disc_loss_logs:{}".format(gen_loss_logs, disc_loss_logs))
 
 
