@@ -120,7 +120,9 @@ class TradingStrategy(object):
 
             sell_signal = -((Rt - Rt_ma) > self.signal_upper).long().to(dtype=tc.float32)
             buy_signal = ((Rt - Rt_ma) < - self.signal_lower).long().to(dtype=tc.float32)
-            signal = (tc.linspace(0,0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.float32)
+
+
+            signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device=self.device) + buy_signal + sell_signal).to(dtype=tc.float32)
             PnL = tc.multiply(Rt, signal).to(dtype=tc.float32, device=self.device)
             if return_signal:
                 return PnL, signal  # [1, T]
@@ -148,6 +150,45 @@ class TradingStrategy(object):
 
 
 
+if __name__ == '__main__':
+
+    from toy_example import toy_sampler
+    from matplotlib import pyplot as plt
+    ps = toy_sampler(500, 100)
+    ps.shape
+    rt = (ps[:, 1:] - ps[:, :-1])/ps[:, :-1]
+    rt_ma = utils.moving_average(rt, 10)
+    rt_ma.std()
+    (rt - rt_ma).min()
+
+    sell_signal = -((rt - rt_ma) > rt_ma.std()).long().to(dtype=tc.float32)
+    buy_signal = ((rt - rt_ma) < - rt_ma.std()).long().to(dtype=tc.float32)
+
+    signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device="mps") + buy_signal + sell_signal).to(
+        dtype=tc.float32)
+    PnL = tc.multiply(rt, signal).to(dtype=tc.float32, device="mps")
+
+    ps_ma = utils.moving_average(ps, 10)
+    ps_ma.std()
+    (ps - ps_ma).std()
+    sell_signal = -((ps - ps_ma) > (ps - ps_ma).std()).long().to(dtype=tc.float32)
+    buy_signal = ((ps - ps_ma) < - (ps - ps_ma).std()).long().to(dtype=tc.float32)
+
+    signal = (tc.linspace(0, 0, steps=buy_signal.shape[-1]).to(device="mps") + buy_signal + sell_signal).to(
+        dtype=tc.float32)
+    PnL = tc.multiply(ps, signal).to(dtype=tc.float32, device="mps")
+
+
+
+
+    plt.figure()
+    for i in tc.randint(0, PnL.shape[0], size=[5]):
+        plt.plot(list(range(PnL.shape[1])), PnL[i,:].cpu(), color="gray", alpha=0.1)
+
+    signal[1, :].cpu()
+
+
+    ma = TradingStrategy("MA", 10, (0,0), ())
 
 
 

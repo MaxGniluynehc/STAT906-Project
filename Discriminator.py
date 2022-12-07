@@ -7,6 +7,10 @@ import torch.nn as nn
 import numpy as np
 from torch import Tensor
 
+from Tradining_Strategies import TradingStrategy
+from utils import *
+
+
 
 # input shape: batch size * policies * number of pnls * pnl size
 
@@ -60,6 +64,29 @@ class Discriminator(nn.Module):
         x = self.dense3(self.leakyrelu(x))
         # x = self.sigmoid(x)
         # x = self.tanh(x)
-                    
         return x
+
+    def loss(self, lbd, ps_real, ps_fake, strategies:list|TradingStrategy, reinforce=False):
+        disc_loss1 = 0
+        disc_loss2 = 0
+        for trade_strategy in strategies:
+            pnl_real = trade_strategy.get_strategy_PnL(ps_real)  # ,tc.ones_like(ps_real))
+            pnl_fake = trade_strategy.get_strategy_PnL(ps_fake)  # ,tc.ones_like(ps_fake))
+
+            fake_ve = self.forward(pnl_fake)
+            fake_v, fake_e = fake_ve[:, 0], fake_ve[:, 1]
+            real_ve = self(pnl_real)
+            real_v, real_e = real_ve[:, 0], real_ve[:, 1]
+
+            disc_loss1 -= tc.abs(tc.mean(score(fake_v, fake_e, pnl_real, 0.05)) - \
+                                  lbd * tc.mean(score(real_v, real_e, pnl_real, 0.05)))
+            if reinforce:
+                true_v = VaR(0.05, pnl_real)
+                true_e = ES(0.05, pnl_real)
+                disc_loss2 += tc.abs(tc.mean(score(real_v, real_e, pnl_real, 0.05)) - \
+                                      lbd * tc.mean(score(true_v, true_e, pnl_real, 0.05)))
+
+        disc_loss = disc_loss1 + disc_loss2
+
+        return disc_loss/len(strategies)
 

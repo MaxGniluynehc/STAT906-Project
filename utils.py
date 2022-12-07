@@ -46,8 +46,6 @@ def VaR(alpha, x):
     return tc.sort(x, dim=-1).values[:, round(alpha*x.shape[-1])-1].to(dev)
 
 
-
-
 def ES(alpha, x):
     x = tc.reshape(x, shape=[-1, x.shape[-1]]).to("cpu")
     x_sorted = tc.sort(x, dim=-1).values
@@ -64,7 +62,8 @@ def score(v,e,x,alpha=0.05):
     '''
     # print(v,e)
     # Setting W needs some discussion
-    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).to(device=dev)]), dim=-1).values
+    # W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).to(device=dev)]), dim=-1).values
+    W = tc.tensor([5],dtype=tc.float32).to(dev)
     # can also use W = np.random.uniform(1, ES(alpha,x)/VaR(alpha,x), num=1)
     v_ = v.repeat(x.shape[-1], 1).T.unsqueeze(-1)
     e_ = e.repeat(x.shape[-1], 1).T.unsqueeze(-1)
