@@ -210,6 +210,15 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH):
 
 
 if __name__ == '__main__':
+    num_epochs = 100
+    batch_size = 128
+    lr = 1e-5
+    noise_size = 100
+    pnl_size = 101
+    market_size = 5
+    # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
+    logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+
     dataloader = tc.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
     # define GAN model
     generator = Generator(noise_size=noise_size, pnl_size=pnl_size, market_size=batch_size, device=dev)  # .to(device)

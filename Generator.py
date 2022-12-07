@@ -55,9 +55,11 @@ class Generator(nn.Module):
 
         return x
 
-    def loss(self, ps_real, ps_fake, strategies:list|TradingStrategy, discriminator:Discriminator, reinforce=False):
+    def loss(self, ps_real, ps_fake, strategies:list|TradingStrategy, discriminator:Discriminator,
+             reinforce=False, vol_reduction=False):
         gen_loss1 = 0
-        gen_loss2 = 0
+        gen_loss_reinf = 0
+        gen_loss_vol_red = 0
         for trade_strategy in strategies:
             pnl_real = trade_strategy.get_strategy_PnL(ps_real)
             pnl_fake = trade_strategy.get_strategy_PnL(ps_fake)
@@ -70,9 +72,12 @@ class Generator(nn.Module):
             if reinforce:
                 true_v = VaR(0.05, pnl_real)
                 true_e = ES(0.05, pnl_real)
-                gen_loss2 += tc.mean(tc.pow(true_v- fake_v, 2)) + tc.mean(tc.pow(true_e- fake_e, 2))
+                gen_loss_reinf += tc.mean(tc.pow(true_v- fake_v, 2)) + tc.mean(tc.pow(true_e- fake_e, 2))
 
-        gen_loss = gen_loss1 + gen_loss2
+            if vol_reduction:
+                gen_loss_vol_red += tc.std(ps_fake)
+
+        gen_loss = gen_loss1 + gen_loss_reinf + gen_loss_vol_red
         return gen_loss/len(strategies)
 
 
