@@ -24,13 +24,14 @@ from scipy.stats import norm
 
 num_epochs = 100
 batch_size = 128
-lr = 1e-5
+lr = 1e-3
 noise_size=100
 pnl_size=101
 market_size=5
 # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
 # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
-logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
+# logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
+logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221207-5layergen/"
 # logs_PATH = "/Users/maxchen/Documents/Study/STA/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
 
 
@@ -105,7 +106,7 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH, reinforce=False
     # ps_real = next(iter(dataloader))
     print("====================================== Start Training ================================================")
     for epoch in epochs:
-        for idx, ps_real in tqdm(enumerate(dataloader, 0)):
+        for idx, ps_real in enumerate(dataloader, 0):
 
             # Train discriminator
             for _ in range(3):  # (idx<=10 and epoch ==0):
@@ -217,30 +218,31 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH, reinforce=False
 if __name__ == '__main__':
     num_epochs = 100
     batch_size = 128
-    lr = 1e-5
+    lr = 1e-3
     noise_size = 100
     pnl_size = 101
     market_size = 5
     # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206/"
-    logs_PATH_old = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
-    logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
+    # logs_PATH_old = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinforce/"
+    # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
+    logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221207-5layergen/"
 
-
-    dataloader = tc.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
-    # define GAN model
-    generator = Generator(noise_size=noise_size, pnl_size=pnl_size, market_size=batch_size, device=dev)  # .to(device)
-    discriminator = Discriminator(pnl_size=pnl_size, device=dev)  # .to(device)
-    disc_optimizer = optim.Adam(discriminator.parameters(), lr=lr)
-    scheduler_disc = tc.optim.lr_scheduler.CosineAnnealingWarmRestarts(disc_optimizer, T_0=50,
-                                                                       eta_min=1e-7)  # CosineAnnealingLR(disc_optimizer, T_max=100, eta_min=1e-7)
-    gen_optimizer = optim.Adam(generator.parameters(), lr=lr)
-    scheduler_gen = tc.optim.lr_scheduler.CosineAnnealingWarmRestarts(gen_optimizer, T_0=50,
-                                                                      eta_min=1e-7)  # .CosineAnnealingLR(gen_optimizer, T_max=100, eta_min=1e-7)
-
+    train(epochs=tqdm(range(100)), lbd=1, logs_PATH=logs_PATH, reinforce=True, vol_reduction=True)
+    # dataloader = tc.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
+    # # define GAN model
+    # generator = Generator(noise_size=noise_size, pnl_size=pnl_size, market_size=batch_size, device=dev)  # .to(device)
+    # discriminator = Discriminator(pnl_size=pnl_size, device=dev)  # .to(device)
+    # disc_optimizer = optim.Adam(discriminator.parameters(), lr=lr)
+    # scheduler_disc = tc.optim.lr_scheduler.CosineAnnealingWarmRestarts(disc_optimizer, T_0=50,
+    #                                                                    eta_min=1e-7)  # CosineAnnealingLR(disc_optimizer, T_max=100, eta_min=1e-7)
+    # gen_optimizer = optim.Adam(generator.parameters(), lr=lr)
+    # scheduler_gen = tc.optim.lr_scheduler.CosineAnnealingWarmRestarts(gen_optimizer, T_0=50,
+    #                                                                   eta_min=1e-7)  # .CosineAnnealingLR(gen_optimizer, T_max=100, eta_min=1e-7)
+    #
 
     # Load trained generator
-    generator = tc.load(logs_PATH_old+"trained_generator_at_epoch_{}.pth".format(139))
-    discriminator = tc.load(logs_PATH_old+"trained_discriminator_at_epoch_{}.pth".format(139))
+    # generator = tc.load(logs_PATH_old+"trained_generator_at_epoch_{}.pth".format(139))
+    # discriminator = tc.load(logs_PATH_old+"trained_discriminator_at_epoch_{}.pth".format(139))
 
     # generator.eval()
     # pnl = generator.forward(mean=0, std=1)
@@ -249,9 +251,9 @@ if __name__ == '__main__':
     #     plt.plot(list(range(pnl.shape[1])), pnl[i, :].detach().cpu(), color="gray", alpha=0.1)
     # plt.ylim([-0.1, 0.1])
 
-    gen_loss_logs, disc_loss_logs = train(epochs=tqdm(range(150,200)), reinforce=True, vol_reduction=True)
-    print("gen_loss_logs: {} \n disc_loss_logs:{}".format(gen_loss_logs, disc_loss_logs))
-
+    # gen_loss_logs, disc_loss_logs = train(epochs=tqdm(range(150,200)), reinforce=True, vol_reduction=True)
+    # print("gen_loss_logs: {} \n disc_loss_logs:{}".format(gen_loss_logs, disc_loss_logs))
+    #
 
 
 

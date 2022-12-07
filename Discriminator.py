@@ -78,7 +78,7 @@ class Discriminator(nn.Module):
             real_ve = self(pnl_real)
             real_v, real_e = real_ve[:, 0], real_ve[:, 1]
 
-            disc_loss1 -= tc.abs(tc.mean(score(fake_v, fake_e, pnl_real, 0.05)) - \
+            disc_loss1 += tc.abs(tc.mean(score(fake_v, fake_e, pnl_real, 0.05)) - \
                                   lbd * tc.mean(score(real_v, real_e, pnl_real, 0.05)))
             if reinforce:
                 true_v = VaR(0.05, pnl_real)
@@ -86,7 +86,7 @@ class Discriminator(nn.Module):
                 disc_loss2 += tc.abs(tc.mean(score(real_v, real_e, pnl_real, 0.05)) - \
                                       lbd * tc.mean(score(true_v, true_e, pnl_real, 0.05)))
 
-        disc_loss = disc_loss1 + disc_loss2
+        disc_loss = -disc_loss1 + disc_loss2
 
         return disc_loss/len(strategies)
 

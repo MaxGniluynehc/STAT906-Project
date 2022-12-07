@@ -18,8 +18,10 @@ class Generator(nn.Module):
         self.noise_type = noise_type
 
         self.dense1 = nn.Linear(noise_size, 256, device=self.device)
-        self.dense2 = nn.Linear(256, 256, device=self.device)
-        self.dense3 = nn.Linear(256, pnl_size, device=self.device)
+        self.dense2 = nn.Linear(256, 512, device=self.device)
+        self.dense3 = nn.Linear(512, 1024, device=self.device)
+        self.dense4 = nn.Linear(1024, 512, device=self.device)
+        self.dense5 = nn.Linear(512, pnl_size, device=self.device)
 
         self.relu = nn.ReLU()
         self.leakyrelu = nn.LeakyReLU()
@@ -39,19 +41,25 @@ class Generator(nn.Module):
 
     def forward(self, hidden_layer_num =1, **kwargs):
         nz = self.generate_noise_input(type=self.noise_type, **kwargs)
-        assert not tc.any(tc.isnan(nz)), AssertionError("gen: nz returns nan!")
+        # assert not tc.any(tc.isnan(nz)), AssertionError("gen: nz returns nan!")
 
-        x = self.dense1(nz)
-        x = self.leakyrelu(x)
-        assert not tc.any(tc.isnan(x)), AssertionError("gen: x after dense1 returns nan!")
+        # x = self.dense1(nz)
+        # x = self.leakyrelu(x)
+        # assert not tc.any(tc.isnan(x)), AssertionError("gen: x after dense1 returns nan!")
 
-        for i in range(hidden_layer_num):
-            x = self.dense2(x)
-            x = self.leakyrelu(x)
-            assert not tc.any(tc.isnan(x)), AssertionError("gen: x in hidden dense{} returns nan!".format(i+1))
+        # for i in range(hidden_layer_num):
+        #     x = self.dense2(x)
+        #     x = self.leakyrelu(x)
+            # assert not tc.any(tc.isnan(x)), AssertionError("gen: x in hidden dense{} returns nan!".format(i+1))
 
-        x = self.dense3(x)
-        assert not tc.any(tc.isnan(x)), AssertionError("gen: x in output layer returns nan!")
+        x = tc.nn.Sequential(self.dense1, self.leakyrelu,
+                             self.dense2, self.leakyrelu,
+                             self.dense3, self.leakyrelu,
+                             self.dense4, self.leakyrelu,
+                             self.dense5)(nz)
+
+        # x = self.dense3(x)
+        # assert not tc.any(tc.isnan(x)), AssertionError("gen: x in output layer returns nan!")
 
         return x
 
