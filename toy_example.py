@@ -218,7 +218,7 @@ def train(epochs=tqdm(range(100)), lbd=1, logs_PATH = logs_PATH, reinforce=False
 if __name__ == '__main__':
     num_epochs = 100
     batch_size = 128
-    lr = 1e-3
+    lr = 1e-5
     noise_size = 100
     pnl_size = 101
     market_size = 5
@@ -227,7 +227,7 @@ if __name__ == '__main__':
     # logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221206-reinf-volred/"
     logs_PATH = "/Users/y222chen/Documents/Max/Study/STAT906_Comp_Intense_Models_in_Finance/Project/project/logs20221207-5layergen/"
 
-    train(epochs=tqdm(range(100)), lbd=1, logs_PATH=logs_PATH, reinforce=True, vol_reduction=True)
+    train(epochs=tqdm(range(100)), lbd=1, logs_PATH=logs_PATH, reinforce=True, vol_reduction=False)
     # dataloader = tc.utils.data.DataLoader(toy_sample, batch_size=batch_size, drop_last=True, shuffle=True)
     # # define GAN model
     # generator = Generator(noise_size=noise_size, pnl_size=pnl_size, market_size=batch_size, device=dev)  # .to(device)
