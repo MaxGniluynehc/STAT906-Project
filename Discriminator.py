@@ -45,10 +45,15 @@ class Discriminator(nn.Module):
         super(Discriminator, self).__init__()
                     
         self.neural_sort = NeuralSort(tau=1.0, device=device)
-        self.dense1 = nn.Linear(pnl_size, pnl_size)
-        self.dense2 = nn.Linear(pnl_size, pnl_size)
-        self.dense3 = nn.Linear(pnl_size,2)
-        
+        self.dense1 = nn.Linear(pnl_size, 1000)
+        self.dense2 = nn.Linear(1000, 256)
+        self.dense3 = nn.Linear(256,128)
+        self.dense4 = nn.Linear(128, 2)
+
+        self.bn1 = nn.BatchNorm1d(1000)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.bn3 = nn.BatchNorm1d(128)
+
         self.relu = nn.ReLU()
         self.leakyrelu = nn.LeakyReLU()
         self.sigmoid = nn.Sigmoid()
@@ -58,6 +63,7 @@ class Discriminator(nn.Module):
         x = torch.matmul(self.neural_sort(x),x.unsqueeze(-1)).squeeze(-1)
         x = self.dense2(self.leakyrelu(self.dense1(x)))
         x = self.dense3(self.leakyrelu(x))
+        x = self.dense4(self.leakyrelu(x))
         # x = self.sigmoid(x)
         # x = self.tanh(x)
                     

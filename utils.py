@@ -14,38 +14,52 @@ import torch
 #     return s
 
 def moving_average(x, window_size):
-    N=window_size
-    zeros = torch.zeros(x.size()[0]).unsqueeze(1).cuda()
-    ma = torch.cat((zeros,x),dim=1)
-    ma = torch.cumsum(ma,dim=1)
-#     print(ma)
-#     print(ma[:,N:] - ma[:,:-N])
-    ma = (ma[:,N:] - ma[:,:-N]) / float(N)
-    ma = torch.cat((x[:,:N-1],ma),dim=1)
+    try:
+        N=window_size
+        zeros = torch.zeros(x.size()[0]).unsqueeze(1).cuda()
+        ma = torch.cat((zeros,x),dim=1)
+        ma = torch.cumsum(ma,dim=1)
+    #     print(ma)
+    #     print(ma[:,N:] - ma[:,:-N])
+        first_N = ma[:,:(window_size - 1)] / torch.arange(1, window_size).cuda()
+        ma = (ma[:,N:] - ma[:,:-N]) / float(N)
+        ma = torch.cat((first_N, ma), dim=1)
+    except:
+        # print(e,"1223444")
+        N = window_size
+        zeros = torch.zeros(x.size()[0]).unsqueeze(1)
+        ma = torch.cat((zeros, x), dim=1)
+        ma = torch.cumsum(ma, dim=1)
+        #     print(ma)
+        #     print(ma[:,N:] - ma[:,:-N])
+        first_N = ma[:, :(window_size - 1)] / torch.arange(1, window_size)
+        ma = (ma[:, N:] - ma[:, :-N]) / float(N)
+        ma = torch.cat((first_N, ma), dim=1)
+
     return ma
 
 
 def VaR(alpha, x):
     x = tc.reshape(x, shape=[-1, x.shape[-1]])
-    return tc.sort(x, dim=-1).values[:, round(alpha*x.shape[-1])-1]
+    return tc.sort(x, dim=-1).values[:, round(alpha*x.shape[-1])-1].cuda()
 
 
 def ES(alpha, x):
     x = tc.reshape(x, shape=[-1, x.shape[-1]])
     x_sorted = tc.sort(x, dim=-1).values
-    ES = tc.mean(x_sorted[:, : round(alpha*x.shape[-1])], dim=-1)
+    ES = tc.mean(x_sorted[:, : round(alpha*x.shape[-1])], dim=-1).cuda()
     return ES
 
 
 def score(v,e,x,alpha):
     # print(v,e)
     # Setting W needs some discussion
-    W = tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values #5*tc.ones(size=(x.shape[0],)).cuda().unsqueeze(-1)
+    W = 5*tc.ones(size=(x.shape[0],)).cuda().unsqueeze(-1) #tc.max(tc.column_stack([e/v, tc.ones(size=x.shape).cuda()]), dim=-1).values #
     # can also use W = np.random.uniform(1, ES(alpha,x)/VaR(alpha,x), num=1)
     v_ = v.repeat(x.shape[-1], 1).T.unsqueeze(-1)
     e_ = e.repeat(x.shape[-1], 1).T.unsqueeze(-1)
     W_ = W.repeat(x.shape[-1], 1).T.unsqueeze(-1)
-    # W_ = W_.reshape(x.shape).unsqueeze(-1)
+    W_ = W_.reshape(x.shape).unsqueeze(-1)
     x = x.unsqueeze(-1)
 
     # print(x.shape,v_.shape,e_.shape,W_.shape)
