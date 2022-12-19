@@ -7,6 +7,14 @@ from utils import *
 
 class Generator(nn.Module):
     def __init__(self, noise_size, pnl_size, market_size, noise_type="gaussian", device="cuda"):
+        """
+
+        :param noise_size: the dimension of the input noise
+        :param pnl_size: predifined dimension of pnl
+        :param market_size: predifined dimension of market
+        :param noise_type: the distribution of the noise
+        :param device: device used for training
+        """
         super(Generator, self).__init__()
 
         self.device = device

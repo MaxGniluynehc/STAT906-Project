@@ -28,6 +28,7 @@ class PriceScenarioDataset(Dataset):
     def __len__(self):
         return self.T - self.batch_time_size + 1
 
+    # overwrite the __getitem__ method to fetch time series data
     def __getitem__(self, index):
 
         ps = self.price_scenario[:, index: index+self.batch_time_size]

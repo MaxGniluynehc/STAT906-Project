@@ -13,7 +13,7 @@ from utils import *
 
 
 # input shape: batch size * policies * number of pnls * pnl size
-
+# The differentiable version of sorting introduced in the paper
 class NeuralSort (torch.nn.Module):
     def __init__(self, tau=1.0, device="cuda"): # set device to "mps" on Mac
         super(NeuralSort, self).__init__()
@@ -80,6 +80,8 @@ class Discriminator(nn.Module):
 
             disc_loss1 += tc.abs(tc.mean(score(fake_v, fake_e, pnl_real, 0.05)) - \
                                   lbd * tc.mean(score(real_v, real_e, pnl_real, 0.05)))
+
+            # constraint the output to the real VaR and ES
             if reinforce:
                 true_v = VaR(0.05, pnl_real)
                 true_e = ES(0.05, pnl_real)
